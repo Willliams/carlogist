@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CarLog MVP</title>
+<style>
+:root{
+  --surface-1:#eef1f8;
+  --surface-2:#ffffff;
+  --text-primary:#14172a;
+  --text-secondary:#4b5370;
+  --text-muted:#8790ab;
+  --text-accent:#185fa5;
+  --text-danger:#b3261e;
+  --border:#e3e6ef;
+  --border-strong:#c7cce0;
+  --bg-accent-muted:#e6f1fb;
+  --bg-danger:#fdeceb;
+  --fill-accent:#185fa5;
+  --fill-danger:#d1453d;
+  --shadow-md:0 6px 20px rgba(20,23,42,.08);
+}
+html.dark{
+  --surface-1:#050a1f;
+  --surface-2:#080f29;
+  --text-primary:#ffffff;
+  --text-secondary:#a7b2da;
+  --text-muted:#5b6796;
+  --text-accent:#6ea8ff;
+  --text-danger:#ff8a8a;
+  --border:#141d47;
+  --border-strong:#212c63;
+  --bg-accent-muted:#0b1638;
+  --bg-danger:#2c0f1a;
+  --fill-accent:#4d86ff;
+  --fill-danger:#ff5c5c;
+  --shadow-md:0 6px 20px rgba(0,0,0,.7);
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--surface-1);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:24px 14px;min-height:100vh;color:var(--text-primary);
+}
+input,select,textarea,button{font-family:inherit;font-size:14px;}
+input,select,textarea{background:var(--surface-1);color:var(--text-primary);border:0.5px solid var(--border-strong);border-radius:8px;padding:8px 10px;}
+button{background:var(--surface-1);color:var(--text-primary);border:0.5px solid var(--border-strong);border-radius:8px;padding:9px 10px;cursor:pointer;}
+button:active{opacity:.8;}
+.app{width:380px;max-width:100%;background:var(--surface-2);border-radius:20px;box-shadow:var(--shadow-md);overflow:hidden;display:flex;flex-direction:column;height:min(760px,calc(100vh - 48px));border:0.5px solid var(--border);}
+@media (max-width:600px){
+  body{padding:0;}
+  .app{width:100%;height:100vh;height:100dvh;max-width:100%;border-radius:0;border:none;}
+}
+.chip{flex:1;text-align:center;padding:7px 0;border-radius:8px;font-size:12px;cursor:pointer;background:var(--surface-2);border:0.5px solid var(--border);color:var(--text-secondary);}
+.fillmode-btn{flex:1;text-align:center;padding:7px 0;border-radius:8px;font-size:12px;cursor:pointer;border:0.5px solid var(--border);color:var(--text-secondary);background:var(--surface-2);}
+.fillmode-btn.active{background:var(--bg-accent-muted);color:var(--text-accent);border-color:var(--text-accent);}
+</style>
+</head>
+<body>
+<div class="app" id="app-screen">
+
+  <div style="flex:none;display:flex;justify-content:flex-end;padding:8px 10px 0;">
+    <button id="theme-toggle" onclick="toggleTheme()" style="border-radius:999px;padding:5px 12px;font-size:11.5px;color:var(--text-secondary);">Тёмная</button>
+  </div>
+
+  <div id="home-page" style="display:flex;flex-direction:column;flex:1;min-height:0;padding:14px 12px;">
+    <div onclick="openCar(false)" style="background:var(--bg-accent-muted);border-radius:12px;padding:12px;position:relative;margin-bottom:10px;flex:none;cursor:pointer;">
+      <div id="home-car-title" style="font-size:15px;font-weight:500;color:var(--text-accent);">Toyota Camry</div>
+      <div id="home-car-sub" style="font-size:13px;color:var(--text-accent);opacity:.85;margin-top:2px;">2010 · А 123 БВ 77</div>
+      <span onclick="event.stopPropagation();openCar(true);" style="position:absolute;top:10px;right:10px;font-size:15px;color:var(--text-accent);cursor:pointer;">✎</span>
+    </div>
+    <div style="background:var(--surface-1);border-radius:12px;padding:12px;margin-bottom:12px;flex:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div><div style="font-size:11px;color:var(--text-muted);">Пробег сейчас <span style="color:var(--text-accent);">· общий для всех разделов</span></div><div id="odo-out" style="font-size:20px;font-weight:500;">—</div></div>
+        <span onclick="openOdoEdit()" style="font-size:15px;color:var(--text-secondary);cursor:pointer;">✎</span>
+      </div>
+      <div id="odo-edit" style="display:none;margin-top:10px;">
+        <input id="odo-input" type="number" style="width:100%;box-sizing:border-box;">
+        <div id="odo-err" style="font-size:12px;color:var(--text-danger);display:none;margin-top:6px;"></div>
+        <div style="display:flex;gap:8px;margin-top:8px;"><button onclick="saveOdo()" style="flex:1;">Сохранить</button><button onclick="cancelOdoEdit()" style="flex:1;">Отмена</button></div>
+      </div>
+      <div id="odo-confirm" style="display:none;margin-top:10px;background:var(--surface-2);border:0.5px solid var(--border);border-radius:10px;padding:10px;">
+        <div id="odo-confirm-text" style="font-size:12px;margin-bottom:8px;"></div>
+        <div style="display:flex;gap:8px;"><button onclick="confirmOdo()" style="flex:1;">Да, обновить</button><button onclick="cancelOdoConfirm()" style="flex:1;">Отмена</button></div>
+      </div>
+    </div>
+    <div style="flex:1;overflow-y:auto;">
+      <div style="border:0.5px solid var(--border);border-radius:12px;overflow:hidden;" id="home-sections"></div>
+      <div id="home-add-toggle" onclick="toggleSectionForm(true)" style="display:flex;align-items:center;gap:6px;padding:10px 12px;margin-top:10px;border:0.5px dashed var(--border-strong);border-radius:12px;color:var(--text-accent);cursor:pointer;">
+        <span style="font-size:15px;">+</span><span style="font-size:13px;">Свой раздел</span>
+      </div>
+      <div id="home-add-form" style="display:none;background:var(--surface-1);border-radius:12px;padding:12px;margin-top:10px;">
+        <div style="display:flex;align-items:center;margin-bottom:8px;"><div style="font-size:13px;font-weight:500;color:var(--text-secondary);flex:1;">Новый раздел</div><span onclick="toggleSectionForm(false)" style="font-size:14px;color:var(--text-muted);cursor:pointer;">✕</span></div>
+        <input id="section-name-input" type="text" placeholder="Например, Кузов" style="width:100%;box-sizing:border-box;" onkeydown="if(event.key==='Enter')createSection()">
+        <div id="section-name-err" style="font-size:12px;color:var(--text-danger);display:none;margin-top:6px;">Введите название</div>
+        <button onclick="createSection()" style="width:100%;margin-top:10px;">Создать</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="car-page" style="display:none;flex-direction:column;flex:1;min-height:0;">
+    <div style="padding:14px 12px 0;flex:none;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <span onclick="showHome()" style="font-size:15px;color:var(--text-muted);cursor:pointer;">←</span>
+        <span style="font-size:16px;font-weight:500;flex:1;">Автомобиль</span>
+        <span onclick="carEditing=true;renderCar();" style="font-size:15px;color:var(--text-secondary);cursor:pointer;">✎</span>
+      </div>
+    </div>
+    <div style="flex:1;overflow-y:auto;overflow-x:hidden;padding:0 12px 12px;min-height:0;">
+      <div id="car-body"></div>
+      <div id="car-params" style="margin-top:12px;"></div>
+      <div id="car-export" style="margin-top:12px;"></div>
+    </div>
+  </div>
+
+  <div id="section-page" style="display:none;flex-direction:column;flex:1;min-height:0;">
+    <div style="padding:14px 12px 0;flex:none;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <span onclick="showHome()" style="font-size:15px;color:var(--text-muted);cursor:pointer;">←</span>
+        <span id="sec-name" style="font-size:16px;font-weight:500;flex:1;">ТО</span>
+        <span onclick="renameSection()" style="font-size:15px;color:var(--text-secondary);cursor:pointer;">✎</span>
+      </div>
+      <div onclick="showHome()" style="display:flex;align-items:center;gap:6px;margin-bottom:10px;font-size:11.5px;color:var(--text-muted);cursor:pointer;">
+        <span>Пробег: <span id="sec-odo-readout" style="color:var(--text-secondary);font-weight:500;">—</span> км <span style="color:var(--text-accent);">· изменить на главном</span></span>
+      </div>
+      <div id="list-toolbar" style="display:flex;align-items:center;gap:8px;margin-bottom:6px;min-height:22px;"></div>
+    </div>
+    <div style="flex:1;overflow-y:auto;overflow-x:hidden;padding:0 12px;min-height:0;">
+      <div id="items" style="border:0.5px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:10px;"></div>
+      <div id="fuel-summary" style="display:none;"></div>
+      <div id="fuel-list" style="display:none;border:0.5px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:10px;"></div>
+    </div>
+    <div id="footer-parts" style="flex:none;padding:10px 12px 12px;border-top:0.5px solid var(--border);">
+      <div id="add-toggle" onclick="toggleForm(true)" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 12px;border:0.5px dashed var(--border-strong);border-radius:12px;color:var(--text-accent);cursor:pointer;">
+        <span style="font-size:15px;">+</span><span style="font-size:13px;">Деталь / работа</span>
+      </div>
+      <div id="add-form" style="display:none;background:var(--surface-1);border-radius:12px;padding:12px;">
+        <div style="display:flex;align-items:center;margin-bottom:8px;"><div style="font-size:13px;font-weight:500;color:var(--text-secondary);flex:1;">Новая деталь / работа</div><span onclick="toggleForm(false)" style="font-size:14px;color:var(--text-muted);cursor:pointer;">✕</span></div>
+        <input id="in-name" type="text" placeholder="Свечи зажигания" style="width:100%;margin-bottom:6px;box-sizing:border-box;">
+        <div id="err-name" style="font-size:12px;color:var(--text-danger);display:none;margin-bottom:6px;">Введите название</div>
+        <input id="in-res" type="number" placeholder="Ресурс, напр. 20000" style="width:100%;box-sizing:border-box;margin-bottom:6px;">
+        <div id="err-res" style="font-size:12px;color:var(--text-danger);display:none;margin-bottom:6px;">Укажите ресурс больше нуля</div>
+        <input id="in-article" type="text" placeholder="Артикул (необязательно)" style="width:100%;box-sizing:border-box;margin-bottom:6px;">
+        <input id="in-supplier" type="text" placeholder="Поставщик (необязательно)" style="width:100%;box-sizing:border-box;">
+        <button onclick="addItem()" style="width:100%;margin-top:10px;">Создать</button>
+      </div>
+    </div>
+    <div id="footer-fuel" style="display:none;flex:none;padding:10px 12px 12px;border-top:0.5px solid var(--border);">
+      <div id="fuel-add-toggle" onclick="toggleFuelForm(true)" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 12px;border:0.5px dashed var(--border-strong);border-radius:12px;color:var(--text-accent);cursor:pointer;">
+        <span style="font-size:15px;">+</span><span style="font-size:13px;">Заправка</span>
+      </div>
+      <div id="fuel-add-form" style="display:none;background:var(--surface-1);border-radius:12px;padding:12px;max-height:360px;overflow-y:auto;">
+        <div style="display:flex;align-items:center;margin-bottom:8px;"><div style="font-size:13px;font-weight:500;color:var(--text-secondary);flex:1;">Новая заправка</div><span onclick="toggleFuelForm(false)" style="font-size:14px;color:var(--text-muted);cursor:pointer;">✕</span></div>
+        <div style="display:flex;gap:8px;margin-bottom:4px;">
+          <input id="fuel-date" type="date" style="flex:1;min-width:0;">
+          <input id="fuel-odo" type="number" placeholder="пробег" style="flex:1;min-width:0;" oninput="updateFuelOdoHint()">
+        </div>
+        <div id="fuel-odo-hint" style="font-size:10.5px;color:var(--text-muted);margin-bottom:6px;"></div>
+        <select id="fuel-type" style="width:100%;box-sizing:border-box;margin-bottom:6px;">
+          <option value="АИ-92">АИ-92</option>
+          <option value="АИ-95">АИ-95</option>
+          <option value="АИ-98">АИ-98</option>
+          <option value="ДТ">ДТ (дизель)</option>
+          <option value="Газ">Газ</option>
+        </select>
+        <div style="display:flex;gap:6px;margin-bottom:8px;">
+          <span id="fill-full-btn" class="fillmode-btn active" onclick="setFillMode(true)">Полный бак</span>
+          <span id="fill-partial-btn" class="fillmode-btn" onclick="setFillMode(false)">Частично</span>
+        </div>
+        <div id="fill-full-fields">
+          <div style="display:flex;gap:8px;">
+            <input id="fuel-liters" type="number" placeholder="литры" style="flex:1;min-width:0;">
+            <input id="fuel-cost" type="number" placeholder="сумма ₽" style="flex:1;min-width:0;">
+          </div>
+        </div>
+        <div id="fill-partial-fields" style="display:none;">
+          <div style="display:flex;gap:6px;margin-bottom:6px;">
+            <span class="chip" onclick="setPartialAmount(500)">500 ₽</span>
+            <span class="chip" onclick="setPartialAmount(1000)">1000 ₽</span>
+            <span class="chip" onclick="setPartialAmount(2000)">2000 ₽</span>
+          </div>
+          <input id="fuel-cost-partial" type="number" placeholder="своя сумма ₽" style="width:100%;box-sizing:border-box;" oninput="updatePartialHint()">
+          <div id="fuel-partial-hint" style="font-size:10.5px;color:var(--text-muted);margin-top:4px;"></div>
+        </div>
+        <div id="fuel-err" style="font-size:12px;color:var(--text-danger);display:none;margin-top:6px;">Заполните все поля корректно</div>
+        <button onclick="addFuel()" style="width:100%;margin-top:10px;">Добавить</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="detail-page" style="display:none;flex-direction:column;flex:1;min-height:0;">
+    <div style="padding:14px 12px 0;flex:none;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <span onclick="showSection()" style="font-size:15px;color:var(--text-muted);cursor:pointer;">←</span>
+        <span id="detail-name" style="font-size:16px;font-weight:500;flex:1;">—</span>
+        <span onclick="toggleDetailEdit(true)" style="font-size:15px;color:var(--text-secondary);cursor:pointer;">✎</span>
+      </div>
+    </div>
+    <div style="flex:1;overflow-y:auto;overflow-x:hidden;padding:0 12px;min-height:0;"><div id="detail-body"></div></div>
+    <div style="flex:none;padding:10px 12px 12px;border-top:0.5px solid var(--border);" id="detail-actions"></div>
+  </div>
+
+  <div id="big-text-overlay" style="display:none;position:absolute;inset:0;background:var(--surface-2);z-index:30;padding:20px;box-sizing:border-box;flex-direction:column;">
+    <div style="display:flex;justify-content:flex-end;margin-bottom:10px;flex:none;"><span onclick="toggleBigText()" style="font-size:22px;color:var(--text-muted);cursor:pointer;">✕</span></div>
+    <div id="big-text-content" style="flex:1;overflow-y:auto;font-size:23px;line-height:1.6;white-space:pre-wrap;font-weight:500;"></div>
+  </div>
+
+  <div id="undo-bar" style="display:none;position:absolute;left:22px;right:22px;bottom:22px;background:var(--surface-1);border:0.5px solid var(--border);border-radius:10px;padding:8px 10px;align-items:center;gap:8px;box-shadow:var(--shadow-md);">
+    <span id="undo-text" style="flex:1;font-size:12px;"></span>
+    <button onclick="undoLast()" style="font-size:12px;padding:4px 10px;">Отменить</button>
+  </div>
+
+</div>
+<script>
+var STORAGE_KEY = 'carlog_mvp_v1';
+var DAILY_RATE = 45;
+var odo = 79500;
+var dragIdx = null;
+var confirmingId = null;
+var confirmingAction = null;
+var undoTimer = null;
+var undoFn = null;
+var pendingOdo = null;
+var nextId = 4;
+var nextSecId = 1;
+var nextFuelId = 5;
+var screen = 'home';
+var detailId = null;
+var detailEditing = false;
+var editingField = null;
+var reschedulingMemberId = null;
+var grouping = false;
+var groupRootId = null;
+var groupMemberIds = [];
+var currentSectionId = 'to';
+var fillMode = 'full';
+var lastFuelType = 'АИ-95';
+var carEditing = false;
+var editingParamId = null;
+var addingParam = false;
+var nextParamId = 2;
+var exportPreset = null;
+var exportCustomFields = {};
+var isDark = false;
+
+var car = {make:'Toyota', model:'Camry', year:2010, plate:'А 123 БВ 77', vin:'JTNBE46K903123456', color:'Серебристый', purchaseDate:'2021-05-14', power:181, trim:'2.5 Elegance', facelift:'Да', customParams:[{id:1, label:'Комплектация', value:'Prestige'}]};
+
+var SECTIONS = [
+  {id:'to', name:'ТО'},
+  {id:'chassis', name:'Ходовая часть'},
+  {id:'powertrain', name:'Силовая установка'},
+  {id:'electrics', name:'Электрика'},
+  {id:'body', name:'Кузов'},
+  {id:'fuel', name:'Топливо'}
+];
+
+var items = [
+  {id:1, name:'Замена масла', section:'to', unit:'km', resource:6000, startOdo:70000, lastChangeDate:'2026-10-20', plannedDate:'2027-06-23', groupRoot:null, article:'MANN W712/75', supplier:'Автозапчасти.ru'},
+  {id:3, name:'Осмотр подвески', section:'to', unit:'km', resource:10000, startOdo:75000, lastChangeDate:'2026-09-15', groupRoot:1, triggerWithRoot:false},
+  {id:2, name:'Тормозные колодки', section:'to', unit:'km', resource:20000, startOdo:70000, lastChangeDate:'2026-10-20', groupRoot:null}
+];
+
+var fuelEntries = [
+  {id:1, date:'2027-06-15', odo:78700, liters:40.0, cost:2800, fuelType:'АИ-95', isFull:true},
+  {id:2, date:'2027-07-05', odo:78900, liters:14.3, cost:1000, fuelType:'АИ-95', isFull:false},
+  {id:3, date:'2027-07-20', odo:79150, liters:22.2, cost:1554, fuelType:'АИ-95', isFull:true},
+  {id:4, date:'2027-08-25', odo:79500, liters:34.8, cost:2436, fuelType:'АИ-95', isFull:true}
+];
+
+function saveState(){
+  try{
+    var state = {car:car, SECTIONS:SECTIONS, items:items, fuelEntries:fuelEntries, odo:odo, nextId:nextId, nextSecId:nextSecId, nextFuelId:nextFuelId, nextParamId:nextParamId, lastFuelType:lastFuelType, isDark:isDark};
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch(e){}
+}
+function loadState(){
+  try{
+    var raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return false;
+    var state = JSON.parse(raw);
+    if(state.car) car = state.car;
+    if(state.SECTIONS) SECTIONS = state.SECTIONS;
+    if(state.items) items = state.items;
+    if(state.fuelEntries) fuelEntries = state.fuelEntries;
+    if(typeof state.odo === 'number') odo = state.odo;
+    if(state.nextId) nextId = state.nextId;
+    if(state.nextSecId) nextSecId = state.nextSecId;
+    if(state.nextFuelId) nextFuelId = state.nextFuelId;
+    if(state.nextParamId) nextParamId = state.nextParamId;
+    if(state.lastFuelType) lastFuelType = state.lastFuelType;
+    if(state.isDark) isDark = state.isDark;
+    return true;
+  } catch(e){ return false; }
+}
+
+function toggleTheme(){
+  isDark = !isDark;
+  document.documentElement.classList.toggle('dark', isDark);
+  document.getElementById('theme-toggle').textContent = isDark ? 'Светлая' : 'Тёмная';
+  saveState();
+}
+
+var EXPORT_FIELDS = [
+  {key:'make', label:'Марка', get:function(){ return car.make; }},
+  {key:'model', label:'Модель', get:function(){ return car.model; }},
+  {key:'year', label:'Год выпуска', get:function(){ return car.year; }},
+  {key:'plate', label:'Госномер', get:function(){ return car.plate; }},
+  {key:'vin', label:'VIN', get:function(){ return car.vin; }},
+  {key:'color', label:'Цвет', get:function(){ return car.color; }},
+  {key:'power', label:'Мощность', get:function(){ return car.power ? car.power+' л.с.' : ''; }},
+  {key:'trim', label:'Обозначение', get:function(){ return car.trim; }},
+  {key:'facelift', label:'Рестайлинг', get:function(){ if(car.facelift==='Да') return 'рестайлинг'; if(car.facelift==='Нет') return 'дорестайлинг'; return ''; }},
+  {key:'odo', label:'Пробег', get:function(){ return odo.toLocaleString('ru-RU')+' км'; }}
+];
+var EXPORT_PRESETS = {
+  shop: {label:'Автомагазин', keys:['vin']},
+  service: {label:'Мастерская', keys:['make','model','year','vin']},
+  full: {label:'Полностью', keys:['make','model','year','plate','vin','color','power','trim','facelift','odo']}
+};
+function buildExportLines(keys){
+  var lines = [];
+  var head = [];
+  if(keys.indexOf('make')!==-1 && car.make) head.push(car.make);
+  if(keys.indexOf('model')!==-1 && car.model) head.push(car.model);
+  if(keys.indexOf('year')!==-1 && car.year) head.push(car.year);
+  if(head.length) lines.push(head.join(' '));
+  EXPORT_FIELDS.forEach(function(f){
+    if(f.key==='make' || f.key==='model' || f.key==='year') return;
+    if(keys.indexOf(f.key) === -1) return;
+    var v = f.get();
+    if(v) lines.push(v);
+  });
+  return lines;
+}
+
+function fmt(n){ return Math.round(n).toLocaleString('ru-RU'); }
+function itemById(id){ return items.find(function(x){ return x.id === id; }); }
+function membersOf(rootId){ return items.filter(function(x){ return x.groupRoot === rootId; }); }
+function topLevelItems(secId){ return items.filter(function(x){ return x.section === secId && (x.groupRoot === null || x.groupRoot === undefined); }); }
+function daysBetween(a, b){ return Math.round((b - a) / 86400000); }
+function toISO(d){ return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+function fmtDate(d){ var m=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек']; return d.getDate()+' '+m[d.getMonth()]+' '+d.getFullYear(); }
+function plannedDateObj(it){ return it.plannedDate ? new Date(it.plannedDate + 'T00:00:00') : null; }
+function todayObj(){ var t=new Date(); return new Date(t.getFullYear(), t.getMonth(), t.getDate()); }
+function updateOdoDisplays(){
+  var out = document.getElementById('odo-out'); if(out) out.textContent = odo.toLocaleString('ru-RU') + ' км';
+  var sec = document.getElementById('sec-odo-readout'); if(sec) sec.textContent = odo.toLocaleString('ru-RU');
+}
+function row(label, valueHtml){ return '<tr><td style="padding:6px 0;color:var(--text-secondary);font-size:13px;border-bottom:0.5px solid var(--border);">'+label+'</td><td style="padding:6px 0;text-align:right;font-size:13px;border-bottom:0.5px solid var(--border);">'+valueHtml+'</td></tr>'; }
+function field(label,id,type,val){ return '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;">'+label+'</div><input id="'+id+'" type="'+type+'" value="'+(val==null?'':val)+'" style="width:100%;box-sizing:border-box;margin-bottom:10px;">'; }
+
+function statsFor(it){
+  var targetKm = it.startOdo + it.resource;
+  var remaining = targetKm - odo;
+  var fromLabel = it.startOdo.toLocaleString('ru-RU');
+  var toLabel = targetKm.toLocaleString('ru-RU');
+  var pct = it.resource > 0 ? ((odo - it.startOdo) / it.resource) * 100 : 0;
+  pct = Math.max(0, Math.min(100, pct));
+  var due = remaining <= 0;
+  var status = due ? '<span style="color:var(--text-danger);">пора</span>' : 'осталось ≈ ' + fmt(remaining) + ' км';
+  var barColor = due ? 'var(--fill-danger)' : 'var(--fill-accent)';
+  return {remaining:remaining, fromLabel:fromLabel, toLabel:toLabel, pct:pct, status:status, barColor:barColor, due:due, targetKm:targetKm};
+}
+function estimateDateInfo(it, s){
+  if(it.plannedDate) return { date: plannedDateObj(it), planned: true };
+  var daysDiff = Math.round((s.targetKm - odo) / DAILY_RATE);
+  var d = todayObj();
+  d.setDate(d.getDate() + daysDiff);
+  return { date: d, planned: false };
+}
+
+function showHome(){
+  screen = 'home';
+  document.getElementById('home-page').style.display = 'flex';
+  document.getElementById('car-page').style.display = 'none';
+  document.getElementById('section-page').style.display = 'none';
+  document.getElementById('detail-page').style.display = 'none';
+  updateOdoDisplays();
+  renderHome(); renderCarCard();
+}
+function openCar(edit){
+  screen = 'car';
+  document.getElementById('home-page').style.display = 'none';
+  document.getElementById('section-page').style.display = 'none';
+  document.getElementById('detail-page').style.display = 'none';
+  document.getElementById('car-page').style.display = 'flex';
+  carEditing = !!edit;
+  editingParamId = null; addingParam = false;
+  renderCar(); renderCarParams(); renderExport();
+}
+function updateSectionMode(){
+  var isFuel = currentSectionId === 'fuel';
+  document.getElementById('list-toolbar').style.display = isFuel ? 'none' : 'flex';
+  document.getElementById('items').style.display = isFuel ? 'none' : 'block';
+  document.getElementById('fuel-summary').style.display = isFuel ? 'block' : 'none';
+  document.getElementById('fuel-list').style.display = isFuel ? 'block' : 'none';
+  document.getElementById('footer-parts').style.display = isFuel ? 'none' : 'block';
+  document.getElementById('footer-fuel').style.display = isFuel ? 'block' : 'none';
+}
+function openSection(id){
+  screen = 'section';
+  currentSectionId = id;
+  document.getElementById('home-page').style.display = 'none';
+  document.getElementById('car-page').style.display = 'none';
+  document.getElementById('section-page').style.display = 'flex';
+  document.getElementById('detail-page').style.display = 'none';
+  document.getElementById('sec-name').textContent = SECTIONS.find(function(s){ return s.id===id; }).name;
+  updateSectionMode(); renderToolbar(); render(); renderFuel();
+}
+function showSection(){
+  screen = 'section';
+  document.getElementById('section-page').style.display = 'flex';
+  document.getElementById('detail-page').style.display = 'none';
+  updateSectionMode(); renderToolbar(); render(); renderFuel();
+}
+function openDetail(id){
+  if(grouping) return;
+  detailId = id; detailEditing = false; screen = 'detail';
+  document.getElementById('home-page').style.display = 'none';
+  document.getElementById('car-page').style.display = 'none';
+  document.getElementById('section-page').style.display = 'none';
+  document.getElementById('detail-page').style.display = 'flex';
+  renderDetail();
+}
+
+function renderCarCard(){
+  var t = document.getElementById('home-car-title'); if(t) t.textContent = car.make + ' ' + car.model;
+  var s = document.getElementById('home-car-sub'); if(s) s.textContent = car.year + (car.plate ? ' · ' + car.plate : '');
+}
+function renderCar(){
+  var body = document.getElementById('car-body');
+  if(carEditing){
+    body.innerHTML = '<div style="background:var(--surface-1);border-radius:12px;padding:12px;">' +
+      field('Марка','car-make-input','text',car.make) +
+      field('Модель','car-model-input','text',car.model) +
+      field('Год выпуска','car-year-input','number',car.year) +
+      field('Госномер','car-plate-input','text',car.plate) +
+      field('VIN','car-vin-input','text',car.vin) +
+      field('Цвет','car-color-input','text',car.color) +
+      field('Дата покупки','car-purchase-input','date',car.purchaseDate) +
+      field('Мощность, л.с.','car-power-input','number',car.power) +
+      field('Обозначение (комплектация/индекс)','car-trim-input','text',car.trim) +
+      '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;">Рестайлинг</div>' +
+      '<select id="car-facelift-input" style="width:100%;box-sizing:border-box;margin-bottom:10px;">' +
+        '<option value=""'+(!car.facelift?' selected':'')+'>—</option>' +
+        '<option value="Да"'+(car.facelift==='Да'?' selected':'')+'>Да</option>' +
+        '<option value="Нет"'+(car.facelift==='Нет'?' selected':'')+'>Нет</option>' +
+      '</select>' +
+      '<div id="car-err" style="font-size:12px;color:var(--text-danger);display:none;margin-bottom:6px;">Заполните марку, модель и год</div>' +
+      '<div style="display:flex;gap:8px;margin-top:2px;"><button onclick="saveCar()" style="flex:1;">Сохранить</button><button onclick="cancelCarEdit()" style="flex:1;">Отмена</button></div>' +
+      '</div>';
+  } else {
+    var html = '<div style="background:var(--surface-1);border-radius:12px;padding:4px 12px;"><table style="width:100%;border-collapse:collapse;">' +
+      row('Марка','<span style="font-weight:500;">'+car.make+'</span>') +
+      row('Модель','<span style="font-weight:500;">'+car.model+'</span>') +
+      row('Год выпуска','<span>'+car.year+'</span>') +
+      row('Госномер','<span>'+(car.plate||'—')+'</span>') +
+      row('VIN','<span style="font-family:monospace;font-size:12px;">'+(car.vin||'—')+'</span>') +
+      row('Цвет','<span>'+(car.color||'—')+'</span>') +
+      row('Дата покупки','<span>'+(car.purchaseDate?fmtDate(new Date(car.purchaseDate+'T00:00:00')):'—')+'</span>');
+    if(car.power) html += row('Мощность','<span>'+car.power+' л.с.</span>');
+    if(car.trim) html += row('Обозначение','<span>'+car.trim+'</span>');
+    if(car.facelift) html += row('Рестайлинг','<span>'+car.facelift+'</span>');
+    html += '</table></div>';
+    body.innerHTML = html;
+  }
+}
+function saveCar(){
+  var make = document.getElementById('car-make-input').value.trim();
+  var model = document.getElementById('car-model-input').value.trim();
+  var year = parseInt(document.getElementById('car-year-input').value);
+  var err = document.getElementById('car-err');
+  if(!make || !model || !year || year<1900){ err.style.display='block'; return; }
+  err.style.display='none';
+  car.make = make; car.model = model; car.year = year;
+  car.plate = document.getElementById('car-plate-input').value.trim();
+  car.vin = document.getElementById('car-vin-input').value.trim();
+  car.color = document.getElementById('car-color-input').value.trim();
+  car.purchaseDate = document.getElementById('car-purchase-input').value;
+  car.power = parseFloat(document.getElementById('car-power-input').value) || null;
+  car.trim = document.getElementById('car-trim-input').value.trim();
+  car.facelift = document.getElementById('car-facelift-input').value;
+  carEditing = false;
+  renderCar(); renderCarCard(); renderExport(); saveState();
+}
+function cancelCarEdit(){ carEditing = false; renderCar(); }
+
+function renderCarParams(){
+  var wrap = document.getElementById('car-params');
+  var html = '<div style="font-size:12px;font-weight:500;color:var(--text-secondary);margin-bottom:6px;">Другие параметры</div>';
+  if(car.customParams.length){
+    html += '<div style="border:0.5px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:10px;">';
+    car.customParams.forEach(function(p, i){
+      var last = i === car.customParams.length-1;
+      if(editingParamId === p.id){
+        html += '<div style="padding:8px 10px;'+(!last?'border-bottom:0.5px solid var(--border);':'')+'">' +
+          '<input id="param-label-input" type="text" value="'+p.label+'" placeholder="Название" style="width:100%;box-sizing:border-box;margin-bottom:6px;">' +
+          '<input id="param-value-input" type="text" value="'+p.value+'" placeholder="Значение" style="width:100%;box-sizing:border-box;">' +
+          '<div style="display:flex;gap:6px;margin-top:6px;"><button onclick="saveParamEdit('+p.id+')" style="flex:1;">Сохранить</button><button onclick="cancelParamEdit()" style="flex:1;">Отмена</button></div>' +
+          '</div>';
+      } else {
+        html += '<div style="padding:8px 10px;display:flex;align-items:center;gap:8px;'+(!last?'border-bottom:0.5px solid var(--border);':'')+'">' +
+          '<div style="flex:1;min-width:0;"><div style="font-size:11px;color:var(--text-muted);">'+p.label+'</div><div style="font-size:13px;">'+p.value+'</div></div>' +
+          '<span onclick="startParamEdit('+p.id+')" style="font-size:13px;color:var(--text-secondary);cursor:pointer;">✎</span>' +
+          '<span onclick="deleteParam('+p.id+')" style="font-size:13px;color:var(--text-muted);cursor:pointer;">✕</span>' +
+          '</div>';
+      }
+    });
+    html += '</div>';
+  }
+  if(addingParam){
+    html += '<div style="background:var(--surface-1);border-radius:12px;padding:12px;">' +
+      '<input id="new-param-label" type="text" placeholder="Название, напр. Мощность" style="width:100%;box-sizing:border-box;margin-bottom:6px;">' +
+      '<input id="new-param-value" type="text" placeholder="Значение, напр. 181 л.с." style="width:100%;box-sizing:border-box;">' +
+      '<div id="param-err" style="font-size:12px;color:var(--text-danger);display:none;margin-top:6px;">Заполните название и значение</div>' +
+      '<div style="display:flex;gap:8px;margin-top:10px;"><button onclick="addParam()" style="flex:1;">Добавить</button><button onclick="toggleAddParam(false)" style="flex:1;">Отмена</button></div>' +
+      '</div>';
+  } else {
+    html += '<div onclick="toggleAddParam(true)" style="display:flex;align-items:center;gap:6px;padding:10px 12px;border:0.5px dashed var(--border-strong);border-radius:12px;color:var(--text-accent);cursor:pointer;">' +
+      '<span style="font-size:15px;">+</span><span style="font-size:13px;">Свой параметр</span></div>';
+  }
+  wrap.innerHTML = html;
+}
+function toggleAddParam(open){ addingParam = open; editingParamId = null; renderCarParams(); if(open){ document.getElementById('new-param-label').focus(); } }
+function addParam(){
+  var label = document.getElementById('new-param-label').value.trim();
+  var value = document.getElementById('new-param-value').value.trim();
+  var err = document.getElementById('param-err');
+  if(!label || !value){ err.style.display='block'; return; }
+  car.customParams.push({id:nextParamId++, label:label, value:value});
+  addingParam = false;
+  renderCarParams(); saveState();
+}
+function startParamEdit(id){ editingParamId = id; addingParam = false; renderCarParams(); }
+function cancelParamEdit(){ editingParamId = null; renderCarParams(); }
+function saveParamEdit(id){
+  var p = car.customParams.find(function(x){ return x.id===id; });
+  var label = document.getElementById('param-label-input').value.trim();
+  var value = document.getElementById('param-value-input').value.trim();
+  if(!label || !value) return;
+  p.label = label; p.value = value; editingParamId = null; renderCarParams(); saveState();
+}
+function deleteParam(id){
+  var idx = car.customParams.findIndex(function(x){ return x.id===id; });
+  if(idx===-1) return;
+  var removed = car.customParams[idx];
+  car.customParams.splice(idx,1);
+  renderCarParams(); saveState();
+  showUndo('Параметр удалён: '+removed.label, function(){ car.customParams.splice(idx,0,removed); renderCarParams(); saveState(); });
+}
+
+function selectExportPreset(key){
+  exportPreset = key;
+  var qrBox = document.getElementById('export-qr');
+  if(qrBox) qrBox.style.display = 'none';
+  renderExport();
+}
+function toggleExportField(key){ exportCustomFields[key] = !exportCustomFields[key]; renderExport(); }
+function renderExport(){
+  var wrap = document.getElementById('car-export');
+  var html = '<div style="font-size:12px;font-weight:500;color:var(--text-secondary);margin-bottom:6px;">Поделиться данными</div>';
+  html += '<div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;">';
+  var options = [
+    {key:'shop', label:'Автомагазин'},
+    {key:'service', label:'Мастерская'},
+    {key:'full', label:'Полностью'},
+    {key:'custom', label:'Свой набор'}
+  ];
+  options.forEach(function(opt){
+    var active = exportPreset === opt.key;
+    html += '<span onclick="selectExportPreset(\''+opt.key+'\')" style="padding:6px 10px;border-radius:8px;font-size:11.5px;cursor:pointer;border:0.5px solid '+(active?'var(--text-accent)':'var(--border)')+';background:'+(active?'var(--bg-accent-muted)':'var(--surface-2)')+';color:'+(active?'var(--text-accent)':'var(--text-secondary)')+';">'+opt.label+'</span>';
+  });
+  html += '</div>';
+
+  if(exportPreset === 'custom'){
+    html += '<div style="border:0.5px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:8px;">';
+    EXPORT_FIELDS.forEach(function(f, i){
+      var checked = !!exportCustomFields[f.key];
+      html += '<div onclick="toggleExportField(\''+f.key+'\')" style="padding:8px 10px;display:flex;align-items:center;gap:8px;cursor:pointer;'+(i<EXPORT_FIELDS.length-1?'border-bottom:0.5px solid var(--border);':'')+'">' +
+        '<span style="font-size:14px;color:'+(checked?'var(--text-accent)':'var(--text-muted)')+';">'+(checked?'☑':'☐')+'</span>' +
+        '<span style="font-size:13px;">'+f.label+'</span></div>';
+    });
+    html += '</div>';
+  }
+
+  if(exportPreset){
+    var keys = exportPreset === 'custom'
+      ? EXPORT_FIELDS.filter(function(f){ return exportCustomFields[f.key]; }).map(function(f){ return f.key; })
+      : EXPORT_PRESETS[exportPreset].keys;
+    var lines = buildExportLines(keys);
+    var text = lines.join('\n');
+    html += '<div style="background:var(--surface-1);border-radius:12px;padding:12px;">' +
+      '<pre id="export-text" style="white-space:pre-wrap;font-family:inherit;font-size:14px;line-height:1.7;margin:0;color:var(--text-primary);">' + (text || 'нет данных для выбранных полей') + '</pre>' +
+      '<div style="display:flex;gap:8px;margin-top:10px;"><button onclick="copyExport()" style="flex:1;">Копировать</button><button onclick="toggleBigText()" style="flex:1;">Крупно</button></div>' +
+      '<div style="display:flex;gap:8px;margin-top:8px;"><button onclick="downloadExportTxt()" style="flex:1;">.txt файл</button><button onclick="toggleQrExport()" style="flex:1;">QR-код</button></div>' +
+      '<div id="export-copied" style="font-size:11px;color:var(--text-accent);text-align:center;margin-top:6px;display:none;"></div>' +
+      '<div id="export-qr" style="display:none;margin-top:10px;text-align:center;background:#fff;border-radius:12px;padding:12px;"></div>' +
+      '</div>' +
+      '<div onclick="alert(\'В будущем: обмен по короткому коду получателя — без копирования и файлов, просто ввёл код и данные на месте.\')" style="margin-top:10px;text-align:center;font-size:11px;color:var(--text-muted);border:0.5px dashed var(--border-strong);border-radius:10px;padding:8px;cursor:pointer;">' +
+      'По коду получателя <span style="color:var(--text-accent);">· скоро</span></div>';
+  }
+  wrap.innerHTML = html;
+}
+function copyExport(){
+  var el = document.getElementById('export-text');
+  var text = el ? el.textContent : '';
+  var badge = document.getElementById('export-copied');
+  function showBadge(msg, ok){
+    if(!badge) return;
+    badge.textContent = msg;
+    badge.style.color = ok ? 'var(--text-accent)' : 'var(--text-danger)';
+    badge.style.display = 'block';
+    setTimeout(function(){ badge.style.display = 'none'; }, 2500);
+  }
+  function fallbackCopy(){
+    try{
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus(); ta.select();
+      var ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      showBadge(ok ? 'Скопировано' : 'Не удалось скопировать — выделите текст вручную', ok);
+    } catch(e){ showBadge('Не удалось скопировать — выделите текст вручную', false); }
+  }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(function(){ showBadge('Скопировано', true); }).catch(fallbackCopy);
+  } else { fallbackCopy(); }
+}
+function toggleBigText(){
+  var overlay = document.getElementById('big-text-overlay');
+  var isOpen = overlay.style.display === 'flex';
+  if(isOpen){ overlay.style.display = 'none'; return; }
+  var textEl = document.getElementById('export-text');
+  document.getElementById('big-text-content').textContent = textEl ? textEl.textContent : '';
+  overlay.style.display = 'flex';
+}
+function downloadExportTxt(){
+  try{
+    var textEl = document.getElementById('export-text');
+    var text = textEl ? textEl.textContent : '';
+    var blob = new Blob([text], {type:'text/plain;charset=utf-8'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = (car.make+'_'+car.model+'_export').replace(/\s+/g,'_') + '.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+  } catch(e){
+    var badge = document.getElementById('export-copied');
+    if(badge){ badge.textContent = 'Скачивание недоступно в этом окружении'; badge.style.color = 'var(--text-danger)'; badge.style.display = 'block'; setTimeout(function(){ badge.style.display='none'; }, 2500); }
+  }
+}
+function toggleQrExport(){
+  var box = document.getElementById('export-qr');
+  var textEl = document.getElementById('export-text');
+  var text = textEl ? textEl.textContent : '';
+  if(!box) return;
+  if(box.style.display === 'block'){ box.style.display = 'none'; return; }
+  box.innerHTML = '';
+  box.style.display = 'block';
+  if(window.QRCode){
+    new QRCode(box, {text:text, width:180, height:180, colorDark:'#000000', colorLight:'#ffffff'});
+    return;
+  }
+  box.innerHTML = '<div style="font-size:11px;color:var(--text-muted);">Загрузка QR-кода…</div>';
+  var settled = false;
+  var scr = document.createElement('script');
+  scr.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+  scr.onload = function(){
+    settled = true;
+    if(window.QRCode){ box.innerHTML=''; new QRCode(box, {text:text, width:180, height:180, colorDark:'#000000', colorLight:'#ffffff'}); }
+    else { box.innerHTML = '<div style="font-size:11px;color:var(--text-danger);">QR недоступен без интернета — используйте .txt или крупный текст</div>'; }
+  };
+  scr.onerror = function(){ settled = true; box.innerHTML = '<div style="font-size:11px;color:var(--text-danger);">Нет доступа к сети для QR — используйте .txt или крупный текст</div>'; };
+  document.head.appendChild(scr);
+  setTimeout(function(){ if(!settled){ box.innerHTML = '<div style="font-size:11px;color:var(--text-danger);">QR недоступен — используйте .txt или крупный текст</div>'; } }, 4000);
+}
+
+function itemsCountFor(secId){ if(secId==='fuel') return fuelEntries.length; return items.filter(function(x){ return x.section===secId; }).length; }
+function renderHome(){
+  var wrap = document.getElementById('home-sections');
+  wrap.innerHTML = '';
+  SECTIONS.forEach(function(sec, i){
+    var rowEl = document.createElement('div');
+    rowEl.onclick = function(){ openSection(sec.id); };
+    rowEl.style.cssText = 'display:flex;align-items:center;gap:10px;padding:11px 12px;cursor:pointer;' + (i<SECTIONS.length-1?'border-bottom:0.5px solid var(--border);':'');
+    rowEl.innerHTML = '<span style="font-size:14px;flex:1;">' + sec.name + (itemsCountFor(sec.id) ? ' <span style="color:var(--text-muted);font-size:11px;">· ' + itemsCountFor(sec.id) + '</span>' : '') + '</span>' +
+      '<span style="font-size:14px;color:var(--text-muted);">→</span>';
+    wrap.appendChild(rowEl);
+  });
+}
+function toggleSectionForm(open){
+  document.getElementById('home-add-form').style.display = open?'block':'none';
+  document.getElementById('home-add-toggle').style.display = open?'none':'flex';
+  if(open){
+    document.getElementById('section-name-input').value='';
+    document.getElementById('section-name-err').style.display='none';
+    document.getElementById('section-name-input').focus();
+  }
+}
+function createSection(){
+  var input = document.getElementById('section-name-input');
+  var err = document.getElementById('section-name-err');
+  var name = input.value.trim();
+  if(!name){ err.style.display='block'; return; }
+  err.style.display='none';
+  var id = 'custom' + (nextSecId++);
+  SECTIONS.push({id:id, name:name});
+  toggleSectionForm(false);
+  renderHome(); saveState();
+}
+
+function renderToolbar(){
+  var bar = document.getElementById('list-toolbar');
+  if(!grouping){
+    bar.innerHTML = '<span style="font-size:10.5px;color:var(--text-muted);flex:1;">перетащите или используйте стрелки</span>' +
+      '<span onclick="startGrouping()" style="font-size:11.5px;color:var(--text-accent);cursor:pointer;">Сгруппировать</span>';
+  } else if(groupRootId === null){
+    bar.innerHTML = '<span style="font-size:11px;color:var(--text-secondary);flex:1;">выберите корень группы</span><span onclick="cancelGrouping()" style="font-size:11.5px;color:var(--text-muted);cursor:pointer;">Отмена</span>';
+  } else {
+    var root = itemById(groupRootId);
+    bar.innerHTML = '<span style="font-size:11px;color:var(--text-secondary);flex:1;">корень: <b style="font-weight:500;color:var(--text-primary);">' + root.name + '</b> · выбрано ' + groupMemberIds.length + '</span>' +
+      '<span onclick="applyGrouping()" style="font-size:11.5px;color:var(--text-accent);cursor:pointer;margin-right:8px;">Готово</span>' +
+      '<span onclick="cancelGrouping()" style="font-size:11.5px;color:var(--text-muted);cursor:pointer;">Отмена</span>';
+  }
+}
+function startGrouping(){ grouping=true; groupRootId=null; groupMemberIds=[]; renderToolbar(); render(); }
+function cancelGrouping(){ grouping=false; groupRootId=null; groupMemberIds=[]; renderToolbar(); render(); }
+function applyGrouping(){ groupMemberIds.forEach(function(id){ var it=itemById(id); if(it) it.groupRoot=groupRootId; }); grouping=false; groupRootId=null; groupMemberIds=[]; renderToolbar(); render(); saveState(); }
+function onRowSelect(id){
+  if(!grouping) return;
+  if(groupRootId===null){ groupRootId=id; }
+  else if(id===groupRootId){ groupRootId=null; groupMemberIds=[]; }
+  else { var idx=groupMemberIds.indexOf(id); if(idx===-1) groupMemberIds.push(id); else groupMemberIds.splice(idx,1); }
+  renderToolbar(); render();
+}
+function unlinkMember(id){ var it=itemById(id); var prev=it.groupRoot; it.groupRoot=null; saveState(); showUndo('Отвязано: '+it.name, function(){ it.groupRoot=prev; render(); saveState(); }); render(); }
+
+function buildRow(it, arrowIdx, arrowTotal, isMember){
+  var s = statsFor(it);
+  var r = document.createElement('div');
+  r.draggable = confirmingId === null && !grouping && !isMember;
+  r.style.cssText = 'padding:8px 8px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;gap:5px;background:var(--surface-2);' + (isMember ? 'margin-left:20px;border-left:2px solid var(--border-strong);padding-left:8px;' : '');
+  if(r.draggable){
+    r.ondragstart = function(e){ dragIdx = arrowIdx; e.dataTransfer.effectAllowed = 'move'; };
+    r.ondragover = function(e){ e.preventDefault(); r.style.background = 'var(--surface-1)'; };
+    r.ondragleave = function(){ r.style.background = 'var(--surface-2)'; };
+    r.ondrop = function(e){
+      e.preventDefault(); r.style.background = 'var(--surface-2)';
+      if(dragIdx === null || dragIdx === arrowIdx) return;
+      var top = topLevelItems(currentSectionId);
+      var moved = top[dragIdx];
+      var fromIdx = items.indexOf(moved);
+      items.splice(fromIdx, 1);
+      var target = top[arrowIdx];
+      var toIdx = items.indexOf(target);
+      items.splice(toIdx, 0, moved);
+      dragIdx = null; render(); saveState();
+    };
+  }
+  var leftHtml;
+  if(grouping){
+    var isRoot = groupRootId === it.id;
+    var isMemberSel = groupMemberIds.indexOf(it.id) !== -1;
+    var mark = isRoot ? '●' : (isMemberSel ? '◉' : '○');
+    var color = isRoot || isMemberSel ? 'var(--text-accent)' : 'var(--text-muted)';
+    leftHtml = '<span onclick="onRowSelect(' + it.id + ')" style="font-size:16px;color:' + color + ';cursor:pointer;flex:none;width:18px;text-align:center;">' + mark + '</span>';
+  } else if(isMember){
+    leftHtml = '<span onclick="unlinkMember(' + it.id + ')" style="font-size:13px;color:var(--text-muted);cursor:pointer;flex:none;width:18px;text-align:center;">↩</span>';
+  } else {
+    leftHtml = '<span style="font-size:13px;color:var(--text-muted);cursor:grab;flex:none;width:14px;text-align:center;">⠿</span>' +
+      '<div style="display:flex;flex-direction:column;">' +
+        '<span onclick="moveTopUp(' + arrowIdx + ')" style="font-size:10px;color:' + (arrowIdx===0?'var(--text-muted)':'var(--text-secondary)') + ';cursor:pointer;line-height:1;">▲</span>' +
+        '<span onclick="moveTopDown(' + arrowIdx + ')" style="font-size:10px;color:' + (arrowIdx===arrowTotal-1?'var(--text-muted)':'var(--text-secondary)') + ';cursor:pointer;line-height:1;">▼</span>' +
+      '</div>';
+  }
+  var memberCount = membersOf(it.id).length;
+  var groupBadge = (!grouping && memberCount>0) ? ' <span style="color:var(--text-accent);">· группа ×' + memberCount + '</span>' : '';
+  var actionsHtml = '';
+  if(!grouping){
+    if(confirmingId === it.id){
+      var q = confirmingAction==='done' ? 'Отметить сделано?' : 'Удалить?';
+      actionsHtml = '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;"><span style="font-size:10px;color:var(--text-secondary);white-space:nowrap;">'+q+'</span><div style="display:flex;gap:6px;"><span onclick="doConfirm()" style="font-size:14px;color:var(--text-accent);cursor:pointer;">✓</span><span onclick="cancelConfirm()" style="font-size:14px;color:var(--text-muted);cursor:pointer;">✕</span></div></div>';
+    } else {
+      actionsHtml = '<span onclick="event.stopPropagation();askConfirm(' + it.id + ',\'done\')" style="font-size:14px;color:var(--text-secondary);cursor:pointer;">✓</span>' +
+        '<span onclick="event.stopPropagation();askConfirm(' + it.id + ',\'delete\')" style="font-size:14px;color:var(--text-muted);cursor:pointer;">✕</span>';
+    }
+  }
+  var infoClick = grouping ? ('onclick="onRowSelect(' + it.id + ')"') : ('onclick="openDetail(' + it.id + ')"');
+  var metaBits = it.resource.toLocaleString('ru-RU') + ' км · ' + s.status;
+  if(it.article) metaBits += ' · арт. ' + it.article;
+  r.innerHTML = leftHtml +
+    '<div style="flex:1;min-width:0;cursor:pointer;" ' + infoClick + '>' +
+      '<div style="font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + it.name + groupBadge + '</div>' +
+      '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + metaBits + '</div>' +
+      '<div style="display:flex;align-items:center;gap:5px;margin-top:3px;"><span style="font-size:9px;color:var(--text-muted);flex:none;">' + s.fromLabel + '</span><div style="flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden;min-width:0;"><div style="height:100%;width:' + s.pct + '%;background:' + s.barColor + ';"></div></div><span style="font-size:9px;color:var(--text-muted);flex:none;">' + s.toLabel + '</span></div>' +
+    '</div>' + actionsHtml;
+  return r;
+}
+function render(){
+  updateOdoDisplays();
+  var wrap = document.getElementById('items');
+  wrap.innerHTML = '';
+  if(currentSectionId === 'fuel') return;
+  var secItems = items.filter(function(x){ return x.section===currentSectionId; });
+  if(secItems.length === 0){ wrap.innerHTML = '<div style="padding:14px 12px;font-size:13px;color:var(--text-muted);">Пока пусто</div>'; return; }
+  var rows = [];
+  if(grouping){
+    secItems.forEach(function(it){ rows.push(buildRow(it, null, null, false)); });
+  } else {
+    var top = topLevelItems(currentSectionId);
+    top.forEach(function(it, idx){
+      rows.push(buildRow(it, idx, top.length, false));
+      membersOf(it.id).forEach(function(kid){ rows.push(buildRow(kid, null, null, true)); });
+    });
+  }
+  rows.forEach(function(r, i){ if(i===rows.length-1) r.style.borderBottom='none'; wrap.appendChild(r); });
+}
+function moveTopUp(idx){ var top=topLevelItems(currentSectionId); if(idx===0) return; var a=top[idx-1],b=top[idx]; var ia=items.indexOf(a),ib=items.indexOf(b); items[ia]=b; items[ib]=a; render(); saveState(); }
+function moveTopDown(idx){ var top=topLevelItems(currentSectionId); if(idx===top.length-1) return; var a=top[idx],b=top[idx+1]; var ia=items.indexOf(a),ib=items.indexOf(b); items[ia]=b; items[ib]=a; render(); saveState(); }
+
+function openOdoEdit(){ document.getElementById('odo-confirm').style.display='none'; document.getElementById('odo-edit').style.display='block'; document.getElementById('odo-input').value=odo; document.getElementById('odo-err').style.display='none'; }
+function cancelOdoEdit(){ document.getElementById('odo-edit').style.display='none'; }
+function saveOdo(){
+  var val = parseFloat(document.getElementById('odo-input').value);
+  var err = document.getElementById('odo-err');
+  if(!val || val<=0){ err.textContent='Введите корректный пробег.'; err.style.display='block'; return; }
+  if(val<odo){ err.textContent='Пробег меньше текущего ('+odo.toLocaleString('ru-RU')+' км).'; err.style.display='block'; return; }
+  err.style.display='none';
+  pendingOdo = Math.round(val);
+  document.getElementById('odo-edit').style.display='none';
+  document.getElementById('odo-confirm-text').textContent = 'Обновить пробег: '+odo.toLocaleString('ru-RU')+' → '+pendingOdo.toLocaleString('ru-RU')+' км? Пересчитается во всех разделах.';
+  document.getElementById('odo-confirm').style.display='block';
+}
+function cancelOdoConfirm(){ document.getElementById('odo-confirm').style.display='none'; document.getElementById('odo-edit').style.display='block'; pendingOdo=null; }
+function confirmOdo(){
+  var old=odo; odo=pendingOdo; pendingOdo=null;
+  document.getElementById('odo-confirm').style.display='none';
+  saveState();
+  showUndo('Пробег обновлён: '+old.toLocaleString('ru-RU')+' → '+odo.toLocaleString('ru-RU')+' км', function(){ odo=old; updateOdoDisplays(); render(); if(screen==='detail') renderDetail(); saveState(); });
+  updateOdoDisplays(); render(); if(screen==='detail') renderDetail();
+}
+function toggleForm(open){ document.getElementById('add-form').style.display=open?'block':'none'; document.getElementById('add-toggle').style.display=open?'none':'flex'; if(open) document.getElementById('in-name').focus(); }
+function addItem(){
+  var nameEl=document.getElementById('in-name'), resEl=document.getElementById('in-res');
+  var articleEl=document.getElementById('in-article'), supplierEl=document.getElementById('in-supplier');
+  var errName=document.getElementById('err-name'), errRes=document.getElementById('err-res');
+  var ok=true;
+  if(!nameEl.value.trim()){ errName.style.display='block'; ok=false; } else errName.style.display='none';
+  var resource=parseFloat(resEl.value);
+  if(!resource||resource<=0){ errRes.style.display='block'; ok=false; } else errRes.style.display='none';
+  if(!ok) return;
+  items.push({id:nextId++, name:nameEl.value.trim(), section:currentSectionId, unit:'km', resource:resource, startOdo:odo, lastChangeDate:toISO(todayObj()), groupRoot:null, article:articleEl.value.trim(), supplier:supplierEl.value.trim()});
+  nameEl.value=''; resEl.value=''; articleEl.value=''; supplierEl.value=''; toggleForm(false); render(); saveState();
+}
+function renameSection(){
+  var el=document.getElementById('sec-name'); var cur=el.textContent;
+  el.outerHTML='<input id="sec-name" type="text" value="'+cur+'" style="font-size:16px;font-weight:500;flex:1;padding:2px 6px;" onblur="finishRename(this)" onkeydown="if(event.key===\'Enter\')this.blur()">';
+  document.getElementById('sec-name').focus();
+}
+function finishRename(input){ var span=document.createElement('span'); span.id='sec-name'; span.style.cssText='font-size:16px;font-weight:500;flex:1;'; span.textContent=input.value||'ТО'; input.replaceWith(span); var sec=SECTIONS.find(function(s){return s.id===currentSectionId;}); if(sec){ sec.name=span.textContent; saveState(); } }
+
+function setFillMode(isFull){
+  fillMode = isFull ? 'full' : 'partial';
+  document.getElementById('fill-full-btn').className = 'fillmode-btn' + (isFull?' active':'');
+  document.getElementById('fill-partial-btn').className = 'fillmode-btn' + (!isFull?' active':'');
+  document.getElementById('fill-full-fields').style.display = isFull?'block':'none';
+  document.getElementById('fill-partial-fields').style.display = isFull?'none':'block';
+}
+function setPartialAmount(v){ document.getElementById('fuel-cost-partial').value = v; updatePartialHint(); }
+function lastKnownPrice(type){
+  var candidates = fuelEntries.filter(function(e){ return e.fuelType===type && e.liters>0; });
+  if(candidates.length===0) candidates = fuelEntries.filter(function(e){ return e.liters>0; });
+  if(candidates.length===0) return 60;
+  var last = candidates.slice().sort(function(a,b){ return a.odo-b.odo; }).pop();
+  return last.cost/last.liters;
+}
+function updatePartialHint(){
+  var type = document.getElementById('fuel-type').value;
+  var price = lastKnownPrice(type);
+  var cost = parseFloat(document.getElementById('fuel-cost-partial').value)||0;
+  var liters = price>0 ? (cost/price) : 0;
+  document.getElementById('fuel-partial-hint').textContent = cost>0 ? ('≈ '+liters.toFixed(1)+' л по '+price.toFixed(2)+' ₽/л') : '';
+}
+function updateFuelOdoHint(){
+  var v = parseFloat(document.getElementById('fuel-odo').value);
+  var hint = document.getElementById('fuel-odo-hint');
+  if(!v){ hint.textContent=''; return; }
+  if(Math.round(v) > odo){ hint.innerHTML = '<span style="color:var(--text-accent);">обновит общий пробег машины ('+odo.toLocaleString('ru-RU')+' → '+Math.round(v).toLocaleString('ru-RU')+' км)</span>'; }
+  else { hint.textContent = 'меньше текущего — только в историю заправок, общий пробег не изменится'; }
+}
+function toggleFuelForm(open){
+  document.getElementById('fuel-add-form').style.display = open?'block':'none';
+  document.getElementById('fuel-add-toggle').style.display = open?'none':'flex';
+  if(open){
+    document.getElementById('fuel-date').value = toISO(todayObj());
+    document.getElementById('fuel-odo').value = odo;
+    document.getElementById('fuel-type').value = lastFuelType;
+    document.getElementById('fuel-liters').value = '';
+    document.getElementById('fuel-cost').value = '';
+    document.getElementById('fuel-cost-partial').value = '';
+    document.getElementById('fuel-partial-hint').textContent = '';
+    document.getElementById('fuel-err').style.display = 'none';
+    setFillMode(true);
+    updateFuelOdoHint();
+  }
+}
+function addFuel(){
+  var date = document.getElementById('fuel-date').value;
+  var odoVal = parseFloat(document.getElementById('fuel-odo').value);
+  var type = document.getElementById('fuel-type').value;
+  var err = document.getElementById('fuel-err');
+  var liters, cost, isFull;
+  if(fillMode==='full'){
+    liters = parseFloat(document.getElementById('fuel-liters').value);
+    cost = parseFloat(document.getElementById('fuel-cost').value);
+    isFull = true;
+    if(!date || !odoVal || odoVal<=0 || !liters || liters<=0 || !cost || cost<=0){ err.textContent='Заполните все поля корректно'; err.style.display='block'; return; }
+  } else {
+    cost = parseFloat(document.getElementById('fuel-cost-partial').value);
+    if(!date || !odoVal || odoVal<=0 || !cost || cost<=0){ err.textContent='Укажите сумму заправки'; err.style.display='block'; return; }
+    var price = lastKnownPrice(type);
+    liters = price>0 ? (cost/price) : 0;
+    isFull = false;
+  }
+  err.style.display='none';
+  var newOdo = Math.round(odoVal);
+  var prevOdo = odo;
+  var odoAdvanced = newOdo > odo;
+  var entry = {id:nextFuelId++, date:date, odo:newOdo, liters:liters, cost:cost, fuelType:type, isFull:isFull};
+  fuelEntries.push(entry);
+  if(odoAdvanced){ odo = newOdo; updateOdoDisplays(); render(); if(screen==='detail') renderDetail(); }
+  lastFuelType = type;
+  toggleFuelForm(false);
+  renderFuel(); saveState();
+  showUndo('Заправка добавлена'+(odoAdvanced?' · пробег обновлён до '+newOdo.toLocaleString('ru-RU')+' км':''), function(){
+    var idx = fuelEntries.indexOf(entry); if(idx>-1) fuelEntries.splice(idx,1);
+    if(odoAdvanced){ odo = prevOdo; updateOdoDisplays(); render(); if(screen==='detail') renderDetail(); }
+    renderFuel(); saveState();
+  });
+}
+function renderFuel(){
+  if(currentSectionId !== 'fuel') return;
+  var sorted = fuelEntries.slice().sort(function(a,b){ return a.odo - b.odo; });
+  var litersSinceFull = 0, lastFullEntry = null;
+  var consMap = {};
+  sorted.forEach(function(e){
+    litersSinceFull += e.liters;
+    if(e.isFull){
+      if(lastFullEntry){
+        var dKm = e.odo - lastFullEntry.odo;
+        if(dKm>0) consMap[e.id] = (litersSinceFull/dKm)*100;
+      }
+      lastFullEntry = e;
+      litersSinceFull = 0;
+    }
+  });
+  var consValues = sorted.filter(function(e){ return consMap[e.id]!==undefined; }).map(function(e){ return consMap[e.id]; });
+  var avg = consValues.length ? (consValues.reduce(function(a,b){return a+b;},0)/consValues.length) : null;
+
+  var summary = document.getElementById('fuel-summary');
+  summary.innerHTML = avg!==null
+    ? '<div style="text-align:center;background:var(--bg-accent-muted);border-radius:12px;padding:12px;margin-bottom:10px;"><div style="font-size:11px;color:var(--text-accent);margin-bottom:2px;">СРЕДНИЙ РАСХОД</div><div style="font-size:22px;font-weight:500;color:var(--text-accent);">'+avg.toFixed(1)+' л/100км</div><div style="font-size:10.5px;color:var(--text-accent);opacity:.8;margin-top:2px;">по '+consValues.length+' полн'+(consValues.length===1?'ой заправке':'ым заправкам')+'</div></div>'
+    : '<div style="text-align:center;background:var(--surface-1);border-radius:12px;padding:12px;margin-bottom:10px;font-size:12px;color:var(--text-muted);">заправьте «Полный бак» дважды подряд, чтобы увидеть расход</div>';
+
+  var list = document.getElementById('fuel-list');
+  list.innerHTML = '';
+  if(sorted.length===0){ list.innerHTML='<div style="padding:14px 12px;font-size:13px;color:var(--text-muted);">Пока нет заправок</div>'; return; }
+  var desc = sorted.slice().reverse();
+  desc.forEach(function(e, i){
+    var cons = consMap[e.id];
+    var pricePerLiter = e.liters>0 ? (e.cost/e.liters) : 0;
+    var rowEl = document.createElement('div');
+    rowEl.style.cssText = 'padding:9px 10px;'+(i<desc.length-1?'border-bottom:0.5px solid var(--border);':'');
+    rowEl.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:baseline;"><span style="font-size:13px;">'+fmtDate(new Date(e.date+'T00:00:00'))+' · '+e.fuelType+'</span><span style="font-size:13px;font-weight:500;">'+e.cost.toLocaleString('ru-RU')+' ₽</span></div>'+
+      '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">'+e.liters.toFixed(1)+' л · '+pricePerLiter.toFixed(2)+' ₽/л · '+e.odo.toLocaleString('ru-RU')+' км · '+(e.isFull?'<span style="color:var(--text-secondary);">полный бак</span>':'<span style="color:var(--text-muted);">частично</span>')+(cons!==undefined?' · <span style="color:var(--text-accent);">'+cons.toFixed(1)+' л/100км</span>':'')+'</div>';
+    list.appendChild(rowEl);
+  });
+}
+
+function toggleDetailEdit(open){ detailEditing=open; editingField=null; renderDetail(); }
+function saveDetailEdit(){
+  var it=itemById(detailId), nameEl=document.getElementById('d-name-input'), resEl=document.getElementById('d-res-input');
+  var articleEl=document.getElementById('d-article-input'), supplierEl=document.getElementById('d-supplier-input');
+  if(!nameEl.value.trim()||!parseFloat(resEl.value)||parseFloat(resEl.value)<=0) return;
+  it.name=nameEl.value.trim(); it.resource=parseFloat(resEl.value); it.article=articleEl.value.trim(); it.supplier=supplierEl.value.trim(); detailEditing=false; renderDetail(); saveState();
+}
+function toggleEditTarget(open){ editingField=open?'target':null; renderDetail(); }
+function saveEditTarget(){
+  var it=itemById(detailId); var val=parseFloat(document.getElementById('target-input').value); var err=document.getElementById('target-err');
+  if(!val||val<=it.startOdo){ err.textContent='Значение должно быть больше пробега последней замены ('+it.startOdo.toLocaleString('ru-RU')+' км).'; err.style.display='block'; return; }
+  it.resource=Math.round(val-it.startOdo); editingField=null; renderDetail(); saveState();
+}
+function toggleEditDate(open){ editingField=open?'date':null; renderDetail(); }
+function saveEditDate(){ var it=itemById(detailId); var val=document.getElementById('date-input').value; if(!val) return; it.plannedDate=val; editingField=null; renderDetail(); saveState(); }
+function resetDateOverride(){ var it=itemById(detailId); delete it.plannedDate; editingField=null; renderDetail(); saveState(); }
+function toggleReschedule(id){ reschedulingMemberId=(reschedulingMemberId===id)?null:id; renderDetail(); }
+function postponeMember(id){
+  var it=itemById(id); var val=parseFloat(document.getElementById('postpone-input-'+id).value); if(!val||val<=0) return;
+  var prevStart=it.startOdo; it.startOdo+=val; reschedulingMemberId=null;
+  saveState();
+  showUndo('Перенесено: '+it.name, function(){ it.startOdo=prevStart; renderDetail(); saveState(); }); renderDetail();
+}
+function toggleEventLink(id){ var it=itemById(id); it.triggerWithRoot=!it.triggerWithRoot; reschedulingMemberId=null; renderDetail(); saveState(); }
+
+function renderDetail(){
+  if(detailId===null || !itemById(detailId)){
+    document.getElementById('detail-name').textContent='—';
+    document.getElementById('detail-body').innerHTML='<div style="padding:24px 0;text-align:center;font-size:13px;color:var(--text-muted);">Деталь не найдена</div>';
+    document.getElementById('detail-actions').innerHTML=''; return;
+  }
+  var it=itemById(detailId); var s=statsFor(it);
+  document.getElementById('detail-name').textContent=it.name;
+  var body=document.getElementById('detail-body');
+  if(detailEditing){
+    body.innerHTML='<div style="background:var(--surface-1);border-radius:12px;padding:12px;margin-bottom:12px;">'+
+      '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;">Название</div>'+
+      '<input id="d-name-input" type="text" value="'+it.name+'" style="width:100%;box-sizing:border-box;margin-bottom:8px;">'+
+      '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;">Ресурс</div>'+
+      '<input id="d-res-input" type="number" value="'+it.resource+'" style="width:100%;box-sizing:border-box;margin-bottom:8px;">'+
+      '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;">Артикул</div>'+
+      '<input id="d-article-input" type="text" value="'+(it.article||'')+'" style="width:100%;box-sizing:border-box;margin-bottom:8px;">'+
+      '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;">Поставщик</div>'+
+      '<input id="d-supplier-input" type="text" value="'+(it.supplier||'')+'" style="width:100%;box-sizing:border-box;">'+
+      '<div style="display:flex;gap:8px;margin-top:10px;"><button onclick="saveDetailEdit()" style="flex:1;">Сохранить</button><button onclick="toggleDetailEdit(false)" style="flex:1;">Отмена</button></div></div>';
+    document.getElementById('detail-actions').innerHTML=''; return;
+  }
+  var est=estimateDateInfo(it,s);
+  var today = todayObj();
+  var daysOverdue=(est.date<today)?daysBetween(est.date,today):0;
+  var kmOverdue=s.due?Math.abs(s.remaining):0;
+  var kids=membersOf(it.id);
+  var root=(it.groupRoot!=null)?itemById(it.groupRoot):null;
+
+  var html='';
+  if(s.due){
+    var parts=[]; if(kmOverdue>0) parts.push(fmt(kmOverdue)+' км'); if(daysOverdue>0) parts.push(daysOverdue+' дн.');
+    html+='<div style="text-align:center;background:var(--bg-danger);border-radius:12px;padding:12px;margin-bottom:10px;"><div style="font-size:12px;color:var(--text-danger);margin-bottom:2px;">ПРОСРОЧЕНО НА</div><div style="font-size:22px;font-weight:500;color:var(--text-danger);">'+parts.join(' / ')+'</div></div>';
+  } else {
+    html+='<div style="text-align:center;background:var(--bg-accent-muted);border-radius:12px;padding:12px;margin-bottom:10px;"><div style="font-size:20px;font-weight:500;color:var(--text-accent);">ОСТАЛОСЬ ≈ '+fmt(s.remaining)+' КМ</div></div>';
+  }
+  html+='<div style="background:var(--surface-1);border-radius:12px;padding:4px 12px;margin-bottom:12px;"><table style="width:100%;border-collapse:collapse;">';
+  html+=row('Сейчас','<span style="font-weight:500;">'+fmt(odo)+' км</span>');
+  if(editingField==='target'){
+    html+='<tr><td colspan="2" style="padding:8px 0;border-bottom:0.5px solid var(--border);"><div style="display:flex;gap:6px;align-items:center;"><input id="target-input" type="number" value="'+s.targetKm+'" style="flex:1;min-width:0;"><span onclick="saveEditTarget()" style="font-size:16px;color:var(--text-accent);cursor:pointer;">✓</span><span onclick="toggleEditTarget(false)" style="font-size:16px;color:var(--text-muted);cursor:pointer;">✕</span></div><div id="target-err" style="font-size:11px;color:var(--text-danger);display:none;margin-top:4px;"></div><div style="font-size:10px;color:var(--text-muted);margin-top:4px;">ресурс пересчитается сам</div></td></tr>';
+  } else {
+    html+=row('Замена при','<span style="font-weight:500;'+(s.due?'color:var(--text-danger);':'color:var(--text-accent);')+'">'+fmt(s.targetKm)+' км</span> <span onclick="toggleEditTarget(true)" style="font-size:12px;color:var(--text-muted);cursor:pointer;margin-left:4px;">✎</span>'+(kmOverdue>0?'<div style="font-size:10px;color:var(--text-danger);">просрочено на '+fmt(kmOverdue)+' км</div>':''));
+  }
+  if(editingField==='date'){
+    html+='<tr><td colspan="2" style="padding:8px 0;border-bottom:0.5px solid var(--border);"><div style="display:flex;gap:6px;align-items:center;"><input id="date-input" type="date" value="'+(it.plannedDate||toISO(est.date))+'" style="flex:1;min-width:0;"><span onclick="saveEditDate()" style="font-size:16px;color:var(--text-accent);cursor:pointer;">✓</span><span onclick="toggleEditDate(false)" style="font-size:16px;color:var(--text-muted);cursor:pointer;">✕</span></div></td></tr>';
+  } else {
+    html+=row('Ожидаемо','<span style="font-weight:500;color:'+(daysOverdue>0?'var(--text-danger)':'var(--text-secondary)')+';">'+(est.planned?'':'~ ')+fmtDate(est.date)+'</span> <span onclick="toggleEditDate(true)" style="font-size:12px;color:var(--text-muted);cursor:pointer;margin-left:4px;">✎</span>'+(daysOverdue>0?'<div style="font-size:10px;color:var(--text-danger);">просрочено на '+daysOverdue+' дн.</div>':'')+(est.planned?'<div style="font-size:10px;color:var(--text-muted);">запланировано · <span onclick="resetDateOverride()" style="color:var(--text-accent);cursor:pointer;">к оценке</span></div>':'<div style="font-size:10px;color:var(--text-muted);">оценка по темпу ~'+DAILY_RATE+' км/день</div>'));
+  }
+  html+=row('Ресурс','<span style="font-weight:500;">'+fmt(it.resource)+' км</span>');
+  if(it.article) html+=row('Артикул','<span>'+it.article+'</span>');
+  if(it.supplier) html+=row('Поставщик','<span>'+it.supplier+'</span>');
+  html+='</table></div>';
+  html+='<div style="display:flex;align-items:center;gap:5px;margin-bottom:14px;"><span style="font-size:9px;color:var(--text-muted);">'+s.fromLabel+'</span><div style="flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden;"><div style="height:100%;width:'+s.pct+'%;background:'+s.barColor+';"></div></div><span style="font-size:9px;color:var(--text-muted);">'+s.toLabel+'</span></div>';
+  if(root){ html+='<div style="font-size:12px;color:var(--text-accent);margin-bottom:10px;">часть группы «'+root.name+'»</div>'; }
+  if(kids.length){
+    html+='<div style="font-size:12px;font-weight:500;color:var(--text-secondary);margin-bottom:6px;">В группе также</div><div style="border:0.5px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:14px;">';
+    kids.forEach(function(k,i){
+      var ks=statsFor(k);
+      html+='<div style="padding:8px 10px;'+(i<kids.length-1?'border-bottom:0.5px solid var(--border);':'')+'"><div style="display:flex;align-items:center;gap:6px;"><div style="flex:1;min-width:0;"><div style="font-size:13px;">'+k.name+(k.triggerWithRoot?' <span style="color:var(--text-accent);font-size:10px;">· по событию</span>':'')+'</div><div style="font-size:10.5px;color:var(--text-muted);margin-top:1px;">'+(k.triggerWithRoot?'выполняется вместе с «'+it.name+'»':ks.status)+'</div></div>';
+      if(confirmingId===k.id){
+        html+='<span style="font-size:10px;color:var(--text-secondary);margin-right:4px;">сделано?</span><span onclick="doConfirm()" style="font-size:14px;color:var(--text-accent);cursor:pointer;">✓</span><span onclick="cancelConfirm()" style="font-size:14px;color:var(--text-muted);cursor:pointer;">✕</span>';
+      } else {
+        html+='<span onclick="askConfirm('+k.id+',\'done\')" style="font-size:14px;color:var(--text-secondary);cursor:pointer;">✓</span><span onclick="toggleReschedule('+k.id+')" style="font-size:12px;color:var(--text-secondary);cursor:pointer;">перенос</span>';
+      }
+      html+='</div>';
+      if(reschedulingMemberId===k.id){
+        html+='<div style="margin-top:8px;padding-top:8px;border-top:0.5px solid var(--border);"><div style="font-size:11px;color:var(--text-secondary);margin-bottom:6px;">на срок:</div><div style="display:flex;gap:6px;margin-bottom:8px;"><input id="postpone-input-'+k.id+'" type="number" placeholder="1000" style="flex:1;min-width:0;"><button onclick="postponeMember('+k.id+')" style="flex:none;padding:6px 10px;">+км</button></div><button onclick="toggleEventLink('+k.id+')" style="width:100%;">'+(k.triggerWithRoot?'Отвязать от события':'Привязать к событию «'+it.name+'»')+'</button></div>';
+      }
+      html+='</div>';
+    });
+    html+='</div>';
+  }
+  html+='<div style="font-size:12px;font-weight:500;color:var(--text-secondary);margin-bottom:6px;">История</div><div style="border:0.5px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:14px;"><div style="padding:8px 10px;display:flex;justify-content:space-between;font-size:12px;"><span>'+fmtDate(new Date(it.lastChangeDate+'T00:00:00'))+'</span><span style="color:var(--text-muted);">'+it.startOdo.toLocaleString('ru-RU')+' км · плановая замена</span></div></div>';
+  body.innerHTML=html;
+
+  var actions=document.getElementById('detail-actions');
+  if(confirmingId===it.id){
+    var q=confirmingAction==='done'?'Отметить сделано?':'Удалить эту деталь?';
+    actions.innerHTML='<div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;text-align:center;">'+q+'</div><div style="display:flex;gap:8px;"><button onclick="doConfirm()" style="flex:1;">Да</button><button onclick="cancelConfirm()" style="flex:1;">Отмена</button></div>';
+  } else {
+    actions.innerHTML='<div style="display:flex;gap:8px;"><button onclick="askConfirm('+it.id+',\'done\')" style="flex:1;">✓ Сделано</button><button onclick="askConfirm('+it.id+',\'delete\')" style="flex:1;">✕ Удалить</button></div>';
+  }
+}
+
+function askConfirm(id, action){ confirmingId=id; confirmingAction=action; if(screen==='section') render(); if(screen==='detail') renderDetail(); }
+function cancelConfirm(){ confirmingId=null; confirmingAction=null; if(screen==='section') render(); if(screen==='detail') renderDetail(); }
+function doConfirm(){
+  var id=confirmingId, action=confirmingAction, it=itemById(id);
+  if(!it) return;
+  if(action==='done'){
+    var prevStart=it.startOdo, prevDate=it.lastChangeDate, prevPlanned=it.plannedDate;
+    it.startOdo=odo; it.lastChangeDate=toISO(todayObj()); delete it.plannedDate;
+    saveState();
+    showUndo('Отмечено: '+it.name, function(){ it.startOdo=prevStart; it.lastChangeDate=prevDate; it.plannedDate=prevPlanned; render(); if(screen==='detail') renderDetail(); saveState(); });
+  } else {
+    var idx=items.indexOf(it); items.splice(idx,1);
+    if(detailId===id){ var top=topLevelItems(currentSectionId); detailId = top.length ? top[0].id : null; if(screen==='detail'){ if(detailId===null) showSection(); } }
+    saveState();
+    showUndo('Удалено: '+it.name, function(){ items.splice(idx,0,it); render(); if(screen==='detail') renderDetail(); saveState(); });
+  }
+  confirmingId=null; confirmingAction=null; render(); if(screen==='detail') renderDetail();
+}
+function showUndo(text, revertFn){
+  clearTimeout(undoTimer); undoFn=revertFn;
+  var bar=document.getElementById('undo-bar');
+  document.getElementById('undo-text').textContent=text; bar.style.display='flex';
+  undoTimer=setTimeout(function(){ bar.style.display='none'; undoFn=null; }, 5000);
+}
+function undoLast(){ if(undoFn) undoFn(); document.getElementById('undo-bar').style.display='none'; clearTimeout(undoTimer); undoFn=null; }
+
+loadState();
+if(isDark){ document.documentElement.classList.add('dark'); document.getElementById('theme-toggle').textContent='Светлая'; }
+showHome();
+</script>
+</body>
+</html>
